@@ -4,7 +4,7 @@
 https://drive.google.com/drive/folders/1gqKuZ38cdTCLLTmuh_AFrqzs1JMdUUUB?usp=sharing
 
 
-![Input Multiple ARtags](Output%20Images/Multiple%20Tags%20Input.png)
+![](Output%20Images/Multiple%20Tags%20Input.png)
 
 
 
