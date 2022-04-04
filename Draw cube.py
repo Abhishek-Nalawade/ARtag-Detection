@@ -120,7 +120,7 @@ while(True):
     r3 = np.cross(B[:,0], B[:,1])
     t = B[:, 2]
     t = np.reshape(t, (3,1))
-    lambd = (2/(magnitude(np.dot(np.linalg.inv(K),B[:,0])) + magnitude(np.dot(np.linalg.inv(K),B[:,1]))))
+    lambd = (2/(magnitude(np.dot(np.linalg.inv(K),H[:,0])) + magnitude(np.dot(np.linalg.inv(K),H[:,1]))))
     #lambd = 1/magnitude(np.dot(np.linalg.inv(K),B[:,0]))
     r1 = lambd * r1
     #lambd = 1/magnitude(np.dot(np.linalg.inv(K),B[:,1]))
