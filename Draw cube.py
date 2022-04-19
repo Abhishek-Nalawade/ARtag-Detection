@@ -57,7 +57,7 @@ while(True):
         approx=cv2.approxPolyDP(i,0.09*perimeter,True)
         area = cv2.contourArea(i)
         #print("area ",area)
-        if area<4000and area>100 and len(approx) == 4:
+        if area<4000 and area>100 and len(approx) == 4:
             final = approx
             final=final.reshape(4,2)
             arranged=np.zeros((4,2))
