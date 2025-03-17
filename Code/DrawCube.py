@@ -3,6 +3,7 @@ import cv2
 import numpy as np
 import imutils
 import matplotlib.pyplot as plt
+from KalmanFilter import KalmanFilter
 
 
 #used to compute the norm
@@ -13,10 +14,110 @@ def magnitude(mat):
     root = sum**(1/2)
     return root
 
+##
+    # brief arranges the coordinates of the square in anticlockwise manner
+    # details The coordinates are arranged in anticlockwise manner in the
+    #         array to obtain the homography
+    #
+    # @param approx1 numpy array of the corners of the square
+    # @param  all_tags1 list of all arranged coordinates
+    # return arranged np.array of arranged coordinates
+    # return all_tags1 list of all arranged coordinates
+##
+def arrange_the_coordinates(approx1, all_tags1):
+    final = approx1
+    final = final.reshape((4,2))
+    arranged = np.zeros((4,2))
+
+    sq_final = np.square(final)
+    sum_final = np.sum(sq_final, axis = 1)
+    dist_final = np.sqrt(sum_final)
+    min_ind = np.argmin(dist_final)
+    arranged[0] = final[min_ind]
+
+    new_final = np.delete(final,min_ind,0)
+    dist_final = np.delete(dist_final,min_ind,0)
+
+    max_ind = np.argmax(dist_final)
+    arranged[2] = new_final[max_ind]
+    new_final = np.delete(new_final,max_ind,0)
+
+    maxy = np.argmax(new_final[:,1])
+    arranged[1] = new_final[maxy]
+    new_final = np.delete(new_final,maxy,0)
+
+    arranged[3] = new_final[0]
+    return arranged, all_tags1
+
+##
+    # brief Checks if the coordinates are arranged properly
+    # details Checks if the coordinates are arranged by checking the point
+    #         of intersection of the diagonals. If the point does not match
+    #         then the arrangement is changed.
+    #
+    # @param arrng partially arranged coordinates
+    # return np.array of arranged coordinates
+##
+def check_if_the_coordinates_are_arranged_properly(arrng):
+    score = 0
+    centx1 = (arrng[0,0] + arrng[2,0])/2
+    centy1 = (arrng[0,1] + arrng[2,1])/2
+    centx2 = (arrng[1,0] + arrng[3,0])/2
+    centy2 = (arrng[1,1] + arrng[3,1])/2
+    if centx1-4 <= centx2 <= centx1+4 and centy1-4 <= centy2 <= centy1+4:
+        score = score + 1
+    if score == 0:
+        arrng1 = arrng.copy()
+        arrng[1] = arrng1[2]
+        arrng[2] = arrng1[1]
+    return arrng
+
+##
+    # brief Removes the inner most contour of the Artag boundary shape
+    # details Removes a special case of error in arranging coordinates
+    #         by checking the point of intersection of diagonals
+    #
+    # @param arrng np.array of partially arranged coordinates
+    # return np.array and index corresponding to whether properly arranged
+##
+def final_check_of_coordinates(arrng):
+    score = 0
+    centx1 = (arrng[0,0] + arrng[2,0])/2
+    centy1 = (arrng[0,1] + arrng[2,1])/2
+    centx2 = (arrng[1,0] + arrng[3,0])/2
+    centy2 = (arrng[1,1] + arrng[3,1])/2
+    if centx1-4 <= centx2 <= centx1+4 and centy1-4 <= centy2 <= centy1+4:
+        score = score + 1
+    if score == 0:
+        return arrng, 1
+    return arrng, 0
+
+
+##
+    # brief Checks if the detected contour is inside the outside contour
+    # details In the detected contours this function checks if the contour
+    #         is inside the outside big contour of the black square.
+    #
+    # @param approx1 numpy array of the arranged corners of the square
+    # @param  all_tags1 list of all arranged coordinates
+    # return int corresponding to whether the detected contour is the required
+    #        one.
+##
+def check_if_the_coordinates_are_inside_the_outside_square(approx1, all_tags1):
+    for i in all_tags1:
+        diff = i - approx1
+        diff_sq = np.square(diff)
+        dist_sq = np.sum(diff_sq, axis = 1)
+        gh = np.where(dist_sq<5041)
+        score = len(gh[0])
+        if score >= 1:
+            return 1
+    return 0
 
 #out = cv2.VideoWriter('Cube1.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 15, (640,480))
 
-vid = cv2.VideoCapture("Tag1.mp4")
+vid = cv2.VideoCapture("..\\Tag1.mp4")
+kf = KalmanFilter(model_varianceX=20, model_varianceY=20, measurement_stdX=1.1, measurement_stdY=1.1, dt=0.1)
 count = 0
 while(True):
     r, frame = vid.read()
@@ -46,41 +147,42 @@ while(True):
     invftcv = np.uint8(np.abs(invft))
 
     can = cv2.Canny(invftcv, 90,800)        #used canny edge detector and then passed the resulting image to findContours
-
+    error = False
     contour=cv2.findContours(can,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
     contour=imutils.grab_contours(contour)
     contour = sorted(contour, key = cv2.contourArea, reverse = True)[:5]
 
     #filtering the required contours coordinates to get the corners of the ARtag
+    all_tags = list()
     for i in contour:
         perimeter=cv2.arcLength(i,True)
         approx=cv2.approxPolyDP(i,0.09*perimeter,True)
         area = cv2.contourArea(i)
         #print("area ",area)
         if area<4000 and area>100 and len(approx) == 4:
-            final = approx
-            final=final.reshape(4,2)
-            arranged=np.zeros((4,2))
+            arranged, all_tags = arrange_the_coordinates(approx, all_tags)
+            arranged = check_if_the_coordinates_are_arranged_properly(arranged)
+            arranged, chck0 = final_check_of_coordinates(arranged)
+            if chck0 == 1:
+                error = True
+                # continue
+            chck1 = check_if_the_coordinates_are_inside_the_outside_square(arranged, all_tags)
+            if chck1 == 1:
+                error = True
+            pred, map = kf.prediction()
 
-            sq_final = np.square(final)
-            sum_final = np.sum(sq_final, axis = 1)
-            dist_final = np.sqrt(sum_final)
-            min_ind = np.argmin(dist_final)
-            arranged[0] = final[min_ind]
-            #print(dist_final)
-            new_final = np.delete(final,min_ind,0)
-
-
-            minx = np.argmin(new_final[:,0])
-            arranged[1] = new_final[minx]
-            new_final = np.delete(new_final,minx,0)
-
-
-            maxy = np.argmax(new_final[:,1])
-            arranged[2] = new_final[maxy]
-            new_final = np.delete(new_final,maxy,0)
-
-            arranged[3] = new_final[0]
+            # correction step only if we have a measurement
+            if error == False:
+                est = kf.correction(arranged, img.copy())
+            # if count>10:
+            #     exit()
+            if error == True:
+                # continue
+                pred = np.dot(map, pred)
+                est = np.zeros((4,2))
+                est[:,0] = np.reshape(pred[:4], (1,4))
+                est[:,1] = np.reshape(pred[4:], (1,4))
+            arranged = est
             break
 
     # now the coordinats of the ARtag are saved in the list named arranged and starting with the problem to get the pose matrix
@@ -159,7 +261,7 @@ while(True):
     img = cv2.line(img, new_coor[7], new_coor[4], (0,0,255), 2)
     cv2.imshow("cube ",img)
     #out.write(img)
-    cv2.waitKey(5)
+    cv2.waitKey(1)
     #cv2.waitKey(0)
 
 
