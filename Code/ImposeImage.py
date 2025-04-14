@@ -4,6 +4,7 @@ import numpy as np
 import imutils
 import matplotlib.pyplot as plt
 from KalmanFilter import KalmanFilter
+from KalmanFilter import ExtendedKalmanFilter
 
 
 # used to compute the norm
@@ -325,7 +326,8 @@ def check_if_the_coordinates_are_inside_the_outside_square(approx1, all_tags1):
     #         image.
 ##
 def read_img_and_video_and_get_coordinates():
-    kf = KalmanFilter(model_varianceX=20, model_varianceY=20, measurement_stdX=1.1, measurement_stdY=1.1, dt=0.1)
+    # kf = KalmanFilter(model_varianceX=20, model_varianceY=20, measurement_stdX=0.5, measurement_stdY=0.5, dt=0.1)
+    kf = ExtendedKalmanFilter(model_varianceX=20, model_varianceY=20, measurement_stdX=1.1, measurement_stdY=1.1, dt=0.1)
     img_test = cv2.imread("../testudo.png")
 
     # vid = cv2.VideoCapture("../multipleTags.mp4")
@@ -353,7 +355,7 @@ def read_img_and_video_and_get_coordinates():
         centx = cols//2
         bound = 6
 
-        # filter LPF
+        # filter HPF
         for y in range(len(ftshif)):
             for x in range(len(ftshif[0])):
                 if y > (centy - bound) and y < (centy + bound) and x > (centx - bound) and  x < (centx + bound):
@@ -395,7 +397,7 @@ def read_img_and_video_and_get_coordinates():
 
                 # correction step only if we have a measurement
                 if error == False:
-                    est = kf.correction(arranged1, img.copy())
+                    est = kf.correction(arranged1)
                 # if count>10:
                 #     exit()
                 if error == True:
@@ -521,6 +523,8 @@ def get_ARtag(arranged,img):
 
         new_img_coor[0,new_img_coor[0,:]>shp[1]-1] = shp[1]-1
         new_img_coor[1,new_img_coor[1,:]>shp[0]-1] = shp[0]-1
+        new_img_coor[0,new_img_coor[0,:]<0] = 0
+        new_img_coor[1,new_img_coor[1,:]<0] = 0
 
         pixel_values = bilinear_interpolation(new_img_coor, img)
         interpolated_artag[i,:] = pixel_values
@@ -687,8 +691,12 @@ def impose_interpolated_test_image(arranged, img_test, orien, img12, flood):
     img12[flood[1,:],flood[0,:]] = pixel_values
     return img12
 
-##
-    # Initiates the code
-##
-read_img_and_video_and_get_coordinates()
-cv2.destroyAllWindows()
+def main():
+
+    read_img_and_video_and_get_coordinates()
+    cv2.destroyAllWindows()
+    return
+
+
+if __name__ == "__main__":
+    main()
