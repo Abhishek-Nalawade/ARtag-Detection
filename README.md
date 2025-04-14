@@ -21,6 +21,11 @@ Finally an image is overlaped on the ARtag according to the orientation of the t
 
 <img src ="Output/Multiple%20Tags%20Output.PNG" width ="500">
 
+Cube super imposition
+<p float="left">
+  <img src ="Output/cube.png" width ="450">
+  <img src ="Output/camera_poses.gif" width ="500">
+</p>
 
 ## Libraries Required
 * Numpy
